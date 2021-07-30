@@ -1,0 +1,24 @@
+{
+  "name": "IGNBot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bot for linking discord account to in game names.",
+  "scripts": {
+    "start": "node IGNBot/index.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "Michael Newbould"
+  },
+  "homepage": "https://github.com/newbould5/IGNBot",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^12.5.3",
+    "dotenv": "^8.2.0",
+    "lowdb": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.31",
+    "nodemon": "^2.0.4"
+  }
+}
