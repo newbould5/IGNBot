@@ -33,16 +33,24 @@ const handleNewMessage = async message => {
 
 		if(message.content.startsWith('!whois')) {
 			if (mentions.length === 0) {
-				message.channel.send('Please mention someone you want to look up eg. !whois @IGNBot')
+				const msg = message.content.substring(7)
+				const user = findByIgn(msg)
+				if(user) {
+					const discorduser = await client.users.fetch(user.id)
+					message.channel.send('Found user ' + discorduser.toString())
+					displayIgn(discorduser, message.channel)
+				} else {
+					message.channel.send('Could not find a user with ign ' + msg)
+				}
 			} else {
 				mentions.forEach(mention => displayIgn(mention[1], message.channel))
 			}
 		} else if(message.content.startsWith('!setign')){
 			setIgn(message.author, message.content)
-			message.channel.send('updated user ' + message.author.username)
+			message.channel.send('updated user ' + message.author.toString())
 		} else if(message.content.startsWith('!addign')) {
 			addIgn(message.author, message.content)
-			message.channel.send('updated user ' + message.author.username)
+			message.channel.send('updated user ' + message.author.toString())
 		}
     }
 }
@@ -75,6 +83,11 @@ const addIgn = (user,message) => {
 		userdb.accounts = userdb.accounts.concat(parseAccounts(message))
 		db.write()
 	}
+}
+
+const findByIgn = message => {
+	return db.data.users
+		.find(u => u.accounts.some(a => a.name === message.trim()))
 }
 
 const parseAccounts = message => {
