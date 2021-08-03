@@ -16,10 +16,17 @@ await db.read()
 // connect beep beep boop
 await client.login(process.env.DISCORD_TOKEN.trim())
 
+const updateMessage = user => `Updated user ${user}`
+const userNotFoundMessage = username => `Could not find user ${username}` //dont mention user again
+const userFoundMessage = user => `Found user ${user}` //when searching by ign mention the user
+const ignNotFoundMessage = ign => `Could not find a user with ign ${ign}`
+const unauthorizedMessage = 'This is an admin only feature.'
+const tooManyMentionsMessage = 'You can only update 1 user at a time.'
+
 const createEmbed = (user,userdb) => {
     let msg = new Discord.MessageEmbed()
         .setColor('#0099ff')
-        .setTitle("IGN's for " + user.username)
+        .setTitle("IGN's for " + user.displayName)
 	userdb.accounts.forEach(account => msg.addField(account.title, account.name))
 	return msg
 }
@@ -29,30 +36,34 @@ const handleNewMessage = async message => {
 	if (message.content.startsWith('!whois') || message.content.startsWith('!setign') || message.content.startsWith('!addign')) {
         console.log('New message and bot was mentioned in', message.channel.name)
 
-        const mentions = [...(message.mentions.users.filter(user => !user.bot))]
+		const mentions = [...(message.mentions.members.filter(member => !member.user.bot))]
 
 		if(message.content.startsWith('!whois')) {
-			if (mentions.length === 0) {
-				const msg = message.content.substring(7)
-				const user = findByIgn(msg)
-				if(user) {
-					const discorduser = await client.users.fetch(user.id)
-					message.channel.send('Found user ' + discorduser.toString())
-					displayIgn(discorduser, message.channel)
-				} else {
-					message.channel.send('Could not find a user with ign ' + msg)
-				}
-			} else {
-				mentions.forEach(mention => displayIgn(mention[1], message.channel))
-			}
+			handleWhoIs(message, mentions)
 		} else if(message.content.startsWith('!setign')){
-			setIgn(message.author, message.content)
-			message.channel.send('updated user ' + message.author.toString())
+			setIgn(message, mentions)
 		} else if(message.content.startsWith('!addign')) {
-			addIgn(message.author, message.content)
-			message.channel.send('updated user ' + message.author.toString())
+			addIgn(message, mentions)
 		}
     }
+}
+
+const handleWhoIs = async (message, mentions) => {
+	if (mentions.length === 0) {
+		const msg = message.content.substring(7)
+		const users = findByIgn(msg)
+		if(users.length > 0) {
+			users.forEach(async user => {
+				const discorduser = await client.users.fetch(user.id)
+				message.channel.send(userFoundMessage(discorduser))
+				displayIgn(discorduser, message.channel)
+			})
+		} else {
+			message.channel.send(ignNotFoundMessage(msg))
+		}
+	} else {
+		mentions.forEach(mention => displayIgn(mention[1], message.channel))
+	}
 }
 
 const displayIgn = (user, channel) => {
@@ -62,43 +73,65 @@ const displayIgn = (user, channel) => {
     if (userdb) {
         channel.send(createEmbed(user,userdb))
     } else {
-        channel.send('Could not find user ' + user.username)
+        channel.send(userNotFoundMessage(user.displayName))
     }
 }
 
 // set ign's in db
-const setIgn = (user,message) => {
+const setIgn = (message, mentions) => {
+	if (!checkMentionsAndPriveleges(message,mentions))
+		return
+	let user = mentions.length === 1 ? mentions[0][1] : message.author
 	let index = db.data.users.findIndex(u => u.id === user.id)
 	if (index > -1)
 		db.data.users.splice(index,1)
 	db.data.users.push({"id": user.id, "accounts": parseAccounts(message)})
 	db.write()
+	message.channel.send(updateMessage(user))
 }
 
 //add ign to existing account
-const addIgn = (user,message) => {
+const addIgn = (message,mentions) => {
+	if (!checkMentionsAndPriveleges(message,mentions))
+		return
+	let user = mentions.length === 1 ? mentions[0][1] : message.author
     const userdb = db.data.users
         .find(u => u.id === user.id)
 	if(userdb) {
 		userdb.accounts = userdb.accounts.concat(parseAccounts(message))
 		db.write()
+		message.channel.send(updateMessage(user))
 	}
 }
 
 const findByIgn = message => {
+	const ign = message.trim().toUpperCase()
 	return db.data.users
-		.find(u => u.accounts.some(a => a.name === message.trim()))
+		.filter(u => u.accounts.some(a => a.name.toUpperCase() === ign))
 }
 
 const parseAccounts = message => {
-	message = message.substr(8) //remove !setign and !addign
-	let spl = message.split(',') //different accounts seperated by ,
+	let msg = message.content.substr(8) //remove !setign and !addign
+	msg = msg.replace(/<@.*>/g, '')
+	let spl = msg.split(',') //different accounts seperated by ,
 	let accounts = []
 	spl.forEach(s => {
 		s = s.trim().split(':')
 		accounts.push({"title": s[0], "name": s[1]})
 	})
 	return accounts
+}
+
+const checkMentionsAndPriveleges = (message,mentions) => {
+	if (mentions.length > 0 && !message.member.hasPermission("ADMINISTRATOR")){
+		message.channel.send(unauthorizedMessage)
+		return false
+	}
+	if (mentions.length > 1) {
+		message.channel.send(tooManyMentionsMessage)
+		return false
+	}
+	return true
 }
 
 // Discord listeners
