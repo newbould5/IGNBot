@@ -23,10 +23,10 @@ const ignNotFoundMessage = ign => `Could not find a user with ign ${ign}`
 const unauthorizedMessage = 'This is an admin only feature.'
 const tooManyMentionsMessage = 'You can only update 1 user at a time.'
 
-const createEmbed = (user,userdb) => {
+const createEmbed = (username,userdb) => {
     let msg = new Discord.MessageEmbed()
         .setColor('#0099ff')
-        .setTitle("IGN's for " + user.displayName)
+        .setTitle("IGN's for " + username)
 	userdb.accounts.forEach(account => msg.addField(account.title, account.name))
 	return msg
 }
@@ -48,13 +48,13 @@ const handleNewMessage = async message => {
     }
 }
 
-const handleWhoIs = async (message, mentions) => {
+const handleWhoIs = (message, mentions) => {
 	if (mentions.length === 0) {
 		const msg = message.content.substring(7)
 		const users = findByIgn(msg)
 		if(users.length > 0) {
 			users.forEach(async user => {
-				const discorduser = await client.users.fetch(user.id)
+				const discorduser = message.guild.members.cache.get(user.id)
 				message.channel.send(userFoundMessage(discorduser))
 				displayIgn(discorduser, message.channel)
 			})
@@ -71,7 +71,7 @@ const displayIgn = (user, channel) => {
         .find(u => u.id === user.id)
 
     if (userdb) {
-        channel.send(createEmbed(user,userdb))
+        channel.send(createEmbed(user.displayName,userdb))
     } else {
         channel.send(userNotFoundMessage(user.displayName))
     }
