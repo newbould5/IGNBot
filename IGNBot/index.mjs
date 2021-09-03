@@ -58,7 +58,7 @@ const handleWhoIs = (message, mentions) => {
 		if(users.length > 0) {
 			users.forEach(async user => {
 				message.guild.members.fetch(user.id)
-					.then(u => {
+					.then(discorduser => {
 						message.channel.send(userFoundMessage(discorduser))
 						displayIgn(discorduser, message.channel)
 					})
