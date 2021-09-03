@@ -22,6 +22,9 @@ const userFoundMessage = user => `Found user ${user}` //when searching by ign me
 const ignNotFoundMessage = ign => `Could not find a user with ign ${ign}`
 const unauthorizedMessage = 'This is an admin only feature.'
 const tooManyMentionsMessage = 'You can only update 1 user at a time.'
+const errorMessage=`Whoops something went wrong :( <@${process.env.ADMIN_ID}> you dumbo please fix me.`
+
+var msg
 
 const createEmbed = (username,userdb) => {
     let msg = new Discord.MessageEmbed()
@@ -138,8 +141,14 @@ const checkMentionsAndPriveleges = (message,mentions) => {
 client.on('message', async message => {
     if (message.author.bot || message.content.includes('@here') || message.content.includes('@everyone'))
         return false
+	msg = message;
 
 	return handleNewMessage(message)
+})
+
+process.on('uncaughtException', err => {
+	console.log(err)
+	msg.channel.send(errorMessage)
 })
 
 // Let's go
