@@ -20,6 +20,7 @@ const updateMessage = user => `Updated user ${user}`
 const userNotFoundMessage = username => `Could not find user ${username}` //dont mention user again
 const userFoundMessage = user => `Found user ${user}` //when searching by ign mention the user
 const ignNotFoundMessage = ign => `Could not find a user with ign ${ign}`
+const missingText = missing => `There ${missing.length == 1 ? "is":"are"} ${missing.length} account${missing.length > 1 || missing.length == 0 ? "s":""} missing${missing.length == 0 ? "." : ":\n"}${missing}`
 const unauthorizedMessage = 'This is an admin only feature.'
 const tooManyMentionsMessage = 'You can only update 1 user at a time.'
 const errorMessage=`Whoops something went wrong :( <@${process.env.ADMIN_ID}> you dumbo please fix me.`
@@ -36,19 +37,21 @@ const createEmbed = (username,userdb) => {
 
 // function to handle a new message to the bot
 const handleNewMessage = async message => {
-	if (message.content.startsWith('!whois') || message.content.startsWith('!setign') || message.content.startsWith('!addign')) {
-        console.log('New message and bot was mentioned in', message.channel.name)
+	const mentions = [...(message.mentions.members.filter(member => !member.user.bot))]
 
-		const mentions = [...(message.mentions.members.filter(member => !member.user.bot))]
-
-		if(message.content.startsWith('!whois')) {
-			handleWhoIs(message, mentions)
-		} else if(message.content.startsWith('!setign')){
-			setIgn(message, mentions)
-		} else if(message.content.startsWith('!addign')) {
-			addIgn(message, mentions)
-		}
-    }
+	if(message.content.startsWith('!whois')) {
+		console.log("!whois in " + message.channel.name)
+		handleWhoIs(message, mentions)
+	} else if(message.content.startsWith('!setign')){
+		console.log("!setign in " + message.channel.name)
+		setIgn(message, mentions)
+	} else if(message.content.startsWith('!addign')) {
+		console.log("!addign in " + message.channel.name)
+		addIgn(message, mentions)
+	} else if(message.content.startsWith('!ignmissing')) {
+		console.log("!ignmissing in " + message.channel.name)
+		ignMissing(message)
+	}
 }
 
 const handleWhoIs = (message, mentions) => {
@@ -109,6 +112,24 @@ const addIgn = (message,mentions) => {
 	}
 }
 
+const ignMissing = async message => {
+	let missing = await findMissing(message);
+	message.channel.send(missingText(missing))
+}
+
+const findMissing = message => {
+	var missing = [];
+	return message.guild.members.fetch()
+		.then(members => {
+			members.filter(m => !m.user.bot).each(member => {
+				if(!db.data.users.some(u => u.id === member.id)){
+					missing.push(member);
+				}
+			})
+			return missing;
+		})
+}
+
 const findByIgn = message => {
 	const ign = message.trim().toUpperCase()
 	return db.data.users
@@ -155,4 +176,4 @@ process.on('uncaughtException', err => {
 
 // Let's go
 console.log('Ready!')
-client.user.setActivity('!whois, !setign, !addign', { type: 'LISTENING' })
+client.user.setActivity('!whois, !setign, !addign', '!ignmissing', { type: 'LISTENING' })
